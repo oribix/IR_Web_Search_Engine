@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.lang.reflect.GenericArrayType;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,18 +24,21 @@ public class CrawlerThread extends Thread{
     
     //TODO: Phase these out or rework
     private AtomicIntegerArray levelLimits;
-    
+    private String levelLimitChecker;
     private AtomicInteger pagesCrawled;     //number of pages successfully crawled so far
                                             //TODO: Maybe use FileManager.docCount?
     
     //CrawlerThread constructor
-    CrawlerThread(Frontier frontier, AtomicInteger pagesCrawled, Settings settings, int threadid){
+    CrawlerThread(Frontier frontier, AtomicInteger pagesCrawled, Settings settings, int threadid, AtomicIntegerArray ll, String llc){
         this.frontier = frontier;
         this.pagesCrawled = pagesCrawled;
         this.settings = settings;
         this.threadid = threadid;
         
-        this.pagesLeft = frontier.getPermits(); //TODO: Phase this out
+        //TODO: Phase these out
+        this.pagesLeft = frontier.getPermits();
+        this.levelLimits = ll;
+        this.levelLimitChecker = llc;
         
     }
     
@@ -42,7 +46,7 @@ public class CrawlerThread extends Thread{
     @Override
     public void run() {
         //While we havn't crawled enough pages or crawled within the specified depth
-        while((pagesCrawled.get() < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), LevelLimitChecker))){
+        while((pagesCrawled.get() < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), levelLimitChecker))){
             if(pagesLeft.tryAcquire()){
                 FrontierElem frontierElem = frontier.poll(); //get next URL in queue
 

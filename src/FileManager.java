@@ -1,31 +1,25 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
 public class FileManager {
     
-    private Settings crawlerSettings;           //Crawler Settings
+    private Settings settings;           		//Crawler Settings
     private static AtomicInteger docCount;      //keeps track of number of documents. Also used to name them.
     
-    public FileManager(Settings crawlerSettings) {
+    public FileManager(Settings settings) {
         docCount = new AtomicInteger(0);
-        this.crawlerSettings = crawlerSettings;
+        this.settings = settings;
     }
 
     //Creates a folder to store crawled pages
     public boolean createStorageFolder() {
         boolean success = true;
         
-        File dir = crawlerSettings.getStoragePath().toFile();
+        File dir = settings.getStoragePath().toFile();
         if(dir.mkdirs()) {
-            System.out.println("Storage folder created at " + crawlerSettings.getStoragePath().toString());
+            System.out.println("Storage folder created at " + settings.getStoragePath().toString());
         }
         else if(!dir.exists()) {
             success = false;
@@ -52,7 +46,7 @@ public class FileManager {
     public String saveAsFile(String htmlContent){
         //System.out.println("filename is " + fileName);
         String fileName = generateFileName();
-        String filePath = crawlerSettings.getStoragePath() + "/"+ fileName;
+        String filePath = settings.getStoragePath() + "/"+ fileName;
         PrintWriter writer = null;
         try{
             writer = new PrintWriter(filePath);
