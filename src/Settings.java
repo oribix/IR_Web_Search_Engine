@@ -2,8 +2,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 class Settings {
-    private Path seedPath;
-    private Path storagePath;
+    private Path seedPath;			//used to initialize the crawler
+    private Path storagePath;		//used to store the crawled pages and the mapping of links to filenames
     
     private int numPagesToCrawl;
     private int maxDepth;

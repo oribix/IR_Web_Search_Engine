@@ -27,12 +27,15 @@ public class Crawler{
     //TODO: Redundant. Keep one, factor out the other
     //maps k<usedUrls> -> v<filename>
     //if the URL was not saved (i.e. has no filename) will hold null for v
-    private static ConcurrentSkipListMap<String, String> usedUrls;
+    //private static ConcurrentSkipListMap<String, String> usedUrls;
     private static ConcurrentLinkedQueue<String> urlDocMap;     //maps URLs -> file names
     
     public static void main(String[] args) {
+    	//Parses arguments!
+    	ArgumentParser argumentParser = new ArgumentParser(args);
+    	
         //Key variables
-        Settings settings = new Settings();
+        Settings settings = argumentParser.getSettings();
         FileManager fileManager = new FileManager(settings);
         Frontier frontier = new Frontier(settings);
         
@@ -40,29 +43,8 @@ public class Crawler{
         AtomicInteger pagesCrawled = new AtomicInteger(0);
         levelLimits = new AtomicIntegerArray(settings.getNumThreads());
         urlDocMap = new ConcurrentLinkedQueue<String>();
-        usedUrls = new ConcurrentSkipListMap<String, String>();
+        //usedUrls = new ConcurrentSkipListMap<String, String>(); //TODO: delete me
         validLock = new Object();
-
-        //prints error message if arguments are wrong then exits
-        if(args.length < 3 || args.length > 4){
-            System.out.println("Incorrect arguments passed. Arguments are of the form: \n"
-                    + "[Seed file path] [# Pages to Crawl] [# of Levels][optional: page storage path]");
-            return;
-        }
-
-        //Initializes the crawler settings
-        try {
-            settings.setSeedPath(Paths.get(args[0]));
-            settings.setNumPagesToCrawl(Integer.parseInt(args[1]));
-            settings.setMaxDepth(Integer.parseInt(args[2]));
-            if(args.length ==  4) settings.setStoragePath(Paths.get(args[3]));
-        }catch(NumberFormatException e){
-            System.out.println("Are arg[1] and arg[2] numbers?");
-            e.printStackTrace();
-        }catch(InvalidPathException e){
-            System.out.println("Invalid path");
-            e.printStackTrace();
-        }
         
         //create appropriate storage folder
         if(!fileManager.createStorageFolder()) {
@@ -70,20 +52,8 @@ public class Crawler{
             System.exit(-1);
         }
 
-        //initialize the frontier
-        Scanner seedScanner = null;
-        try {
-            seedScanner = new Scanner(settings.getSeedPath());
-            while(seedScanner.hasNext()){
-                String url = seedScanner.next();
-                frontier.add(new FrontierElem(url, 0));
-                usedUrls.put(url, "");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            seedScanner.close();
-        }
+        //TODO: Delete Me? Initialize the frontier
+        
 
         //set LevelLimitChecker
         levelLimitChecker = "[1";
