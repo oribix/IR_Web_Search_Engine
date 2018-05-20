@@ -1,6 +1,11 @@
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 
+/**
+ * Argument Parser parses the passed in arguments.
+ * As it stands, the parser simply uses the arguments to construct a Settings object. 
+ *
+ */
 public class ArgumentParser {
 	
 	private String[] args;

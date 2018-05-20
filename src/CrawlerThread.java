@@ -23,6 +23,11 @@ public class CrawlerThread extends Thread{
     private Semaphore pagesLeft;            //number of pages left to crawl
     private int waitCount;                  //each thread has own WaitCount, goes up every time frontier's empty
     
+    //TODO:somehow make this prettier
+    private static Object validLock;        //lock used with url_doc_map
+    static {
+        validLock = new Object();
+    }
     
     //TODO: Phase these out or rework
     private AtomicIntegerArray levelLimits;
@@ -112,36 +117,6 @@ public class CrawlerThread extends Thread{
         return doc;
     }
     
-    /**
-     * @param url The URL to check
-     * @return true if the URL is fit for the frontier, false otherwise (i.e we do not want it in the frontier) 
-     */
-    private boolean isValidURL(String url){
-        //TODO: investigate why "https://" is not here
-        if(url != null && url.startsWith("http://") && !isDuplicate(url)){
-            return true;
-        }
-        return false;
-    }
-    
-    /**
-     * @param url URL to check
-     * @return true if the URL is a duplicate, false otherwise
-     */
-    private boolean isDuplicate(String url){
-        String alt = null;
-        int len = url.length();
-        if(url.endsWith("/") && len > 1) alt = url.substring(0, len - 2);
-        else alt = url + "/";
-        synchronized (usedUrls) {
-            if (usedUrls.get(url) != null || usedUrls.get(alt) != null) {
-                //System.out.println(url + " is a duplicate!");
-                return true;
-            }
-        }
-        return false;
-    }
-    
     //downloads the page at the specified URL's location
     //returns true on success
     private boolean downloadFile(FrontierElem frontierElem){
@@ -154,8 +129,10 @@ public class CrawlerThread extends Thread{
             String htmlContent = doc.html();
             if(htmlContent != null){
                 //saves the page in a file
-                String fileName = //saveAsFile(htmlContent);
+                String fileName = fileManager.saveAsFile(htmlContent);
                 if( fileName != null){
+                    String url = frontierElem.getUrl();
+                    
                     //succeeded in saving html file, now add to url-doc_map string list
                     urlDocMap.add(url + " " + fileName);
                     usedUrls.put(url, fileName);
@@ -169,8 +146,8 @@ public class CrawlerThread extends Thread{
                         //checks if a URL is valid. Records it if it is to prevent duplicate URLs
                         boolean urlValid = false;
                         synchronized(validLock){
-                            urlValid = isValidURL(normalizedURL);
-                            if(urlValid && (hops < numLevels)){
+                            urlValid = frontier.isValidURL(normalizedURL);
+                            if(urlValid && (frontierElem.getDepth() < numLevels)){
                                 usedUrls.put(normalizedURL, "");
                             }
                         }

@@ -25,7 +25,7 @@ class Settings {
      */
     private int getNumThreadsInCPU() {
         //TODO: get number of threads in CPU
-        return 16;
+        return 4;
     }
 
     /**

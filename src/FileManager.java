@@ -1,25 +1,26 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FileManager {
     
-    private Settings settings;           		//Crawler Settings
+    private Path storagePath;                   //path for storing the files
     private static AtomicInteger docCount;      //keeps track of number of documents. Also used to name them.
     
     public FileManager(Settings settings) {
+        storagePath = settings.getStoragePath();
         docCount = new AtomicInteger(0);
-        this.settings = settings;
     }
 
     //Creates a folder to store crawled pages
     public boolean createStorageFolder() {
         boolean success = true;
         
-        File dir = settings.getStoragePath().toFile();
+        File dir = storagePath.toFile();
         if(dir.mkdirs()) {
-            System.out.println("Storage folder created at " + settings.getStoragePath().toString());
+            System.out.println("Storage folder created at " + storagePath);
         }
         else if(!dir.exists()) {
             success = false;
@@ -46,7 +47,7 @@ public class FileManager {
     public String saveAsFile(String htmlContent){
         //System.out.println("filename is " + fileName);
         String fileName = generateFileName();
-        String filePath = settings.getStoragePath() + "/"+ fileName;
+        String filePath = storagePath + "/"+ fileName;
         PrintWriter writer = null;
         try{
             writer = new PrintWriter(filePath);

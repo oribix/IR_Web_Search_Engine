@@ -1,25 +1,13 @@
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.*;
 import java.util.Objects;
-import java.util.Queue;
-import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListMap;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 //TODO: Move the level Limit nonsense over to the threads
 public class Crawler{
     //Thread variables
     private static String levelLimitChecker;		//Used to see if all threads are waiting
-    private static Object validLock;                //lock used with url_doc_map
 
     //Each element hold value for each thread, when all are set to 1, there are no more valid urls within level limits
     private static AtomicIntegerArray levelLimits;
@@ -44,16 +32,12 @@ public class Crawler{
         levelLimits = new AtomicIntegerArray(settings.getNumThreads());
         urlDocMap = new ConcurrentLinkedQueue<String>();
         //usedUrls = new ConcurrentSkipListMap<String, String>(); //TODO: delete me
-        validLock = new Object();
         
         //create appropriate storage folder
         if(!fileManager.createStorageFolder()) {
             System.out.println("Storage folder creation failed. Aborting...");
             System.exit(-1);
         }
-
-        //TODO: Delete Me? Initialize the frontier
-        
 
         //set LevelLimitChecker
         levelLimitChecker = "[1";
@@ -106,9 +90,8 @@ public class Crawler{
 
         //save any leftovers
         try {
-            fw = new FileWriter(settings.getStoragePath().toFile() + "/"+ "_url_doc_map.txt", true);
-            bw = new BufferedWriter(fw);
-            writer = new PrintWriter(bw);
+            String urlDocMapPath = settings.getStoragePath().toFile() + "/"+ "_url_doc_map.txt";
+            writer = new PrintWriter(new BufferedWriter(new FileWriter(urlDocMapPath, true)));
             String s = null;
             while((s = urlDocMap.poll()) != null){
                 writer.println(s);

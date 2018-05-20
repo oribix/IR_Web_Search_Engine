@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -24,15 +25,57 @@ public class Frontier{
         frontier = new ConcurrentLinkedQueue<FrontierElem>();
         permits = new Semaphore(settings.getNumPagesToCrawl());
         usedUrls = new ConcurrentSkipListMap<>();
-        
         //currentDepth = 0; //TODO: uncomment once implemented
-        
         this.maxDepth = settings.getMaxDepth();
         
+        initializeFrontier(settings.getSeedPath());
+    }
+    
+    /**
+     * @return the permits
+     */
+    public Semaphore getPermits() {
+        return permits;
+    }
+    
+    /**
+     * @param url The URL to check
+     * @return true if the URL is fit for the frontier, false otherwise (i.e we do not want it in the frontier) 
+     */
+    public boolean isValidURL(String url){
+        //TODO: investigate why "https://" is not here
+        if(url != null && url.startsWith("http://") && !isDuplicate(url)){
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * @param url URL to check
+     * @return true if the URL is a duplicate, false otherwise
+     */
+    private boolean isDuplicate(String url){
+        String alt = null;
+        int len = url.length();
+        if(url.endsWith("/") && len > 1) alt = url.substring(0, len - 2);
+        else alt = url + "/";
+        synchronized (usedUrls) {
+            if (usedUrls.get(url) != null || usedUrls.get(alt) != null) {
+                //System.out.println(url + " is a duplicate!");
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * @param seedPath path to the file containing seed URLs
+     */
+    private void initializeFrontier(Path seedPath) {
         //initialize the frontier with the seeds
         Scanner seedScanner = null;
         try {
-            seedScanner = new Scanner(settings.getSeedPath());
+            seedScanner = new Scanner(seedPath);
             while(seedScanner.hasNext()){
                 String url = seedScanner.next();
                 frontier.add(new FrontierElem(url, 0));
@@ -43,13 +86,7 @@ public class Frontier{
         } finally {
             seedScanner.close();
         }
-    }
-    
-    /**
-     * @return the permits
-     */
-    public Semaphore getPermits() {
-        return permits;
+        return;
     }
     
     //-----------------------------
