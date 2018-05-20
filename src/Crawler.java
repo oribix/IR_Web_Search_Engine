@@ -67,7 +67,7 @@ public class Crawler{
         CrawlerThread[] crawlerThreads = new CrawlerThread[settings.getNumThreads()];
         for(int i = 0; i < settings.getNumThreads(); i++){
             //TODO: GET THE DANG SIGNATURE CORRECT
-            crawlerThreads[i] = new CrawlerThread(frontier, pagesCrawled, settings, i, levelLimits, levelLimitChecker);
+            crawlerThreads[i] = new CrawlerThread(frontier, fileManager, settings, pagesCrawled, i, levelLimits, levelLimitChecker);
             crawlerThreads[i].start();
         }
 

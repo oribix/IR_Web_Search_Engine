@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.GenericArrayType;
 import java.util.Objects;
@@ -13,6 +14,7 @@ import org.jsoup.select.Elements;
 
 public class CrawlerThread extends Thread{
     
+    private FileManager fileManager;
     private Settings settings;
     private int threadid;
     
@@ -29,10 +31,17 @@ public class CrawlerThread extends Thread{
                                             //TODO: Maybe use FileManager.docCount?
     
     //CrawlerThread constructor
-    CrawlerThread(Frontier frontier, AtomicInteger pagesCrawled, Settings settings, int threadid, AtomicIntegerArray ll, String llc){
+    CrawlerThread(Frontier frontier,
+                  FileManager fileManager,
+                  Settings settings,
+                  AtomicInteger pagesCrawled,
+                  int threadid,
+                  AtomicIntegerArray ll,
+                  String llc){
         this.frontier = frontier;
-        this.pagesCrawled = pagesCrawled;
+        this.fileManager = fileManager;
         this.settings = settings;
+        this.pagesCrawled = pagesCrawled;
         this.threadid = threadid;
         
         //TODO: Phase these out
@@ -145,7 +154,7 @@ public class CrawlerThread extends Thread{
             String htmlContent = doc.html();
             if(htmlContent != null){
                 //saves the page in a file
-                String fileName = saveAsFile(htmlContent);
+                String fileName = //saveAsFile(htmlContent);
                 if( fileName != null){
                     //succeeded in saving html file, now add to url-doc_map string list
                     urlDocMap.add(url + " " + fileName);
