@@ -14,6 +14,7 @@ import java.util.concurrent.Semaphore;
 public class Frontier{
     private ConcurrentLinkedQueue<FrontierElem> frontier;   //thread-safe queue
     private ConcurrentMap<String, String> usedUrls;			//used to determine if a URL is or was in the queue
+
     private Semaphore permits;                              //limits how many elements of the frontier may be crawled
     
     //TODO: make queue of queue's to track depth. Will need to overhaul this class HARD
@@ -36,6 +37,13 @@ public class Frontier{
      */
     public Semaphore getPermits() {
         return permits;
+    }
+    
+    /**
+     * @return the used urls
+     */
+    public ConcurrentMap<String, String> getUsedUrls() {
+        return usedUrls;
     }
     
     /**

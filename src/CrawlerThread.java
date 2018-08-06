@@ -7,11 +7,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-
 public class CrawlerThread extends Thread{
     
     private FileManager fileManager;
@@ -78,7 +73,6 @@ public class CrawlerThread extends Thread{
                     }
 
                     //downloads the URL
-                    //try {
                     if(pagesCrawled.get() < settings.getNumPagesToCrawl()){
                         if(downloadFile(frontierElem)){
                             //keeps track of how many pages we have crawled
@@ -102,75 +96,38 @@ public class CrawlerThread extends Thread{
         return;
     }
     
-    /**
-     * @param url URL to fetch doc from
-     * @return On success returns the document which the URL points to, else null
-     */
-    private Document fetchDoc(String url) {
-        //request page with HTTP get
-        Document doc = null;
-        try {
-            doc = Jsoup.connect(url).get();
-        } catch (IOException e) {
-        } catch (IllegalArgumentException e) {
-        }
-        return doc;
+    FrontierElem[] crawlUrl(FrontierElem frontierElem) {
+        
+        return null;
     }
     
     //downloads the page at the specified URL's location
     //returns true on success
     private boolean downloadFile(FrontierElem frontierElem){
-        boolean success = false;
-
-        Document doc = fetchDoc(frontierElem.getUrl());
-
-        if(doc != null){
-            //get the HTML content
-            String htmlContent = doc.html();
-            if(htmlContent != null){
-                //saves the page in a file
-                String fileName = fileManager.saveAsFile(htmlContent);
-                if( fileName != null){
-                    String url = frontierElem.getUrl();
-                    
-                    //succeeded in saving html file, now add to url-doc_map string list
-                    urlDocMap.add(url + " " + fileName);
-                    usedUrls.put(url, fileName);
-
-                    //Gets all the links in the page and add them into the frontier
-                    Elements urlLinks = doc.select("a[href]");
-                    for(Element elem : urlLinks){
-                        String hrefURL = elem.attr("href");
-                        String normalizedURL = normalizeURL(url, hrefURL);
-
-                        //checks if a URL is valid. Records it if it is to prevent duplicate URLs
-                        boolean urlValid = false;
-                        synchronized(validLock){
-                            urlValid = frontier.isValidURL(normalizedURL);
-                            if(urlValid && (frontierElem.getDepth() < numLevels)){
-                                usedUrls.put(normalizedURL, "");
-                            }
-                        }
-
-                        //System.out.println(url + " has " + hops + " hops");
-                        //if the url is valid, and isn't more hops away from see than numLevels
-                        if(urlValid && (hops < numLevels)){
-                            try{
-                                FrontierElem normURLPair = new FrontierElem(normalizedURL, hops + 1);
-                                frontier.add(normURLPair);
-                            } catch(NullPointerException e){
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-
-                    success = true;
-                }
-                else {
-                    System.out.println("error saving document. url: " + url);
-                }
+        
+        //save the web page in a file
+        String fileName = fileManager.saveAsFile(htmlContent);
+        if(fileName == null) {
+            System.out.println("error saving document. url: " + url);
+            return false;
+        }
+        
+        //checks if a URL is valid. Records it if it is to prevent duplicate URLs
+        boolean urlValid = false;
+        synchronized(validLock){
+            urlValid = frontier.isValidURL(normalizedURL);
+            if(urlValid && (currentDepth < settings.getMaxDepth())){
+                usedUrls.put(normalizedURL, "");
             }
         }
-        return success;
+        
+        //add to urlDocMap which maps url to filename
+        urlDocMap.add(url + " " + fileName);
+        
+        //mark URL as "used"
+        usedUrls.put(url, fileName);
+
+        
+        return true;
     }
 }

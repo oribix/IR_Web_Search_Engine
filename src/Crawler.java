@@ -12,10 +12,8 @@ public class Crawler{
     //Each element hold value for each thread, when all are set to 1, there are no more valid urls within level limits
     private static AtomicIntegerArray levelLimits;
     
-    //TODO: Redundant. Keep one, factor out the other
     //maps k<usedUrls> -> v<filename>
     //if the URL was not saved (i.e. has no filename) will hold null for v
-    //private static ConcurrentSkipListMap<String, String> usedUrls;
     private static ConcurrentLinkedQueue<String> urlDocMap;     //maps URLs -> file names
     
     public static void main(String[] args) {
@@ -31,7 +29,6 @@ public class Crawler{
         AtomicInteger pagesCrawled = new AtomicInteger(0);
         levelLimits = new AtomicIntegerArray(settings.getNumThreads());
         urlDocMap = new ConcurrentLinkedQueue<String>();
-        //usedUrls = new ConcurrentSkipListMap<String, String>(); //TODO: delete me
         
         //create appropriate storage folder
         if(!fileManager.createStorageFolder()) {
@@ -57,8 +54,6 @@ public class Crawler{
 
         //saves mapping as we crawl pages
         //we do not go past this point until we have crawled all the pages
-        FileWriter fw;
-        BufferedWriter bw = null;
         PrintWriter writer = null;
         int pc = 0;        //pages crawled
         int pcols = 0;     //pages crawled on last save
@@ -67,9 +62,8 @@ public class Crawler{
             int pcsls = pc - pcols; //pages crawled since last save
             if(pcsls >= ptcbs){
                 try{
-                    fw = new FileWriter(settings.getStoragePath() + "/"+ "_url_doc_map.txt", true);
-                    bw = new BufferedWriter(fw);
-                    writer = new PrintWriter(bw);
+                    String urlDocMapPath = settings.getStoragePath() + "/"+ "_url_doc_map.txt";
+                    writer = new PrintWriter(new BufferedWriter(new FileWriter(urlDocMapPath, true)));
                     for(int i = 0; i < pcsls; ){
                         String mapping = urlDocMap.poll();
                         if(mapping != null) {
@@ -90,7 +84,7 @@ public class Crawler{
 
         //save any leftovers
         try {
-            String urlDocMapPath = settings.getStoragePath().toFile() + "/"+ "_url_doc_map.txt";
+            String urlDocMapPath = settings.getStoragePath() + "/"+ "_url_doc_map.txt";
             writer = new PrintWriter(new BufferedWriter(new FileWriter(urlDocMapPath, true)));
             String s = null;
             while((s = urlDocMap.poll()) != null){

@@ -49,7 +49,7 @@ class FrontierElem {
      * @param url the full URL
      * @return the cleaned, normalized URL on success, else returns null
      */
-    private String normalizeURL(String base, String url) {
+    public static String normalizeURL(String base, String url) {
         URL normalizedURL = null;
         try{
             URL context = new URL(base);
