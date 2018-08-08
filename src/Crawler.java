@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Semaphore;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -16,13 +17,8 @@ import org.jsoup.select.Elements;
 
 
 public class Crawler implements Runnable {
-    
-    //argument variables
-    private static Path seedPath;				//the path to the document holding the starting URLs
-    private static int numPagesToCrawl;   //carries permits equal to the number of pages we will crawl
-    private static int numLevels;               //how many levels deep we will crawl
-    private static Path storagePath;            //path to where we store the html files
-    private static final int numThreads = 16;				//How many threads are run
+
+    private static Settings settings;
     
     //Thread variables
     private Thread t;                               //the Crawler object's thread
@@ -36,7 +32,7 @@ public class Crawler implements Runnable {
     private static String LevelLimitChecker;		//Used to see if all threads are waiting
     
     //Each element hold value for each thread, when all are set to 1, there are no more valid urls within level limits
-    private static AtomicIntegerArray LevelLimits = new AtomicIntegerArray(numThreads);
+    private static AtomicIntegerArray levelLimits;
     
     //queue holding all the URLs we will crawl and Levels of those URLs
     private static ConcurrentLinkedQueue<UrlPair> frontier;
@@ -114,7 +110,7 @@ public class Crawler implements Runnable {
     	//System.out.println("filename is " + fileName);
     	try{
     	    String fileName = generateFileName();
-    	    PrintWriter writer = new PrintWriter(storagePath + "/"+ fileName);
+    	    PrintWriter writer = new PrintWriter(settings.getStoragePath() + "/"+ fileName);
     	    writer.print(htmlContent);
     	    writer.close();
     	    return fileName;
@@ -163,14 +159,14 @@ public class Crawler implements Runnable {
                         boolean urlValid = false;
                         synchronized(validLock){
                             urlValid = isValidURL(normalizedURL);
-                            if(urlValid && (hops < numLevels)){
+                            if(urlValid && (hops < settings.getMaxDepth())){
                                 usedUrls.put(normalizedURL, "");
                             }
                         }
 
                         //System.out.println(url + " has " + hops + " hops");
                         //if the url is valid, and isn't more hops away from see than numLevels
-                        if(urlValid && (hops < numLevels)){
+                        if(urlValid && (hops < settings.getMaxDepth())){
                             try{
                             	UrlPair NormURLPair = new UrlPair(normalizedURL, hops + 1);
                                 frontier.add(NormURLPair);
@@ -191,17 +187,17 @@ public class Crawler implements Runnable {
     }
     
 	public static void main(String[] args) {
-	    
+
+        //get the settings from the args
+        settings =  new CrawlerSettings(args);
+
 	    //initializing the variables
-	    seedPath = null;
-	    numPagesToCrawl = 0;
-	    numLevels = 0;
-	    storagePath = null;
 	    docCount = new AtomicLong(0);
 	    pagesCrawled = new AtomicInteger(0);
 	    frontier = new ConcurrentLinkedQueue<UrlPair>();
 	    url_doc_map = new ConcurrentLinkedQueue<String>();
 	    usedUrls = new ConcurrentSkipListMap<String, String>();
+	    levelLimits = new AtomicIntegerArray(settings.getNumThreads());
 	    validLock = new Object();
 	    
 	    
@@ -214,16 +210,10 @@ public class Crawler implements Runnable {
 	    
 	    //sets the variables to the arguments
         try {
-            seedPath = Paths.get(args[0]);
-            numPagesToCrawl = Integer.parseInt(args[1]);
-	        pagesLeft = new Semaphore(numPagesToCrawl);
-	        numLevels = Integer.parseInt(args[2]);
-	        
-	        if(args.length ==  4) storagePath = Paths.get(args[3]);
-            else storagePath = Paths.get("./crawledPages");
+	        pagesLeft = new Semaphore(settings.getNumPagesToCrawl());
 	        
 	        //Creates a folder to store crawled pages
-	        File dir = storagePath.toFile();
+	        File dir = settings.getStoragePath().toFile();
             if(dir.mkdirs()) System.out.println("Storage folder successfully created");
             else if(!dir.exists()){
                 System.out.println("Storage folder creation failed. Exiting...");
@@ -240,7 +230,7 @@ public class Crawler implements Runnable {
 	    //initialize the frontier
         Scanner seedScanner = null;
         try {
-            seedScanner = new Scanner(seedPath);
+            seedScanner = new Scanner(settings.getSeedPath());
             //gets all lines from the document specified in seedPath
             //enters each line into frontier queue
             while(seedScanner.hasNext()){
@@ -257,15 +247,15 @@ public class Crawler implements Runnable {
         
         //set LevelLimitChecker
         LevelLimitChecker = "[1";
-        for (int i = 1; i < numThreads; i++) {
+        for (int i = 1; i < settings.getNumThreads(); i++) {
         	LevelLimitChecker = LevelLimitChecker + ", 1";
         }
         LevelLimitChecker = LevelLimitChecker + "]";
         
         //creates Crawlers to be used as threads then runs them
         long startTime = System.nanoTime();
-	    Crawler[] c = new Crawler[numThreads];
-	    for(int i = 0; i < numThreads; i++){
+	    Crawler[] c = new Crawler[settings.getNumThreads()];
+	    for(int i = 0; i < settings.getNumThreads(); i++){
 	        c[i] = new Crawler("Thread " + i, i);
 	        c[i].start();
 	    }
@@ -278,11 +268,11 @@ public class Crawler implements Runnable {
 	    int pc = 0;        //pages crawled
 	    int pcols = 0;     //pages crawled on last save
 	    int ptcbs = 100;   //pages to crawl before we save
-	    while(((pc = pagesCrawled.get()) < numPagesToCrawl) && !(Objects.equals(LevelLimits.toString(), LevelLimitChecker))){
+	    while(((pc = pagesCrawled.get()) < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), LevelLimitChecker))){
     	    int pcsls = pc - pcols; //pages crawled since last save
 	        if(pcsls >= ptcbs){
 	            try{
-	                fw = new FileWriter(storagePath + "/"+ "_url_doc_map.txt", true);
+	                fw = new FileWriter(settings.getStoragePath() + "/"+ "_url_doc_map.txt", true);
 	                bw = new BufferedWriter(fw);
 	                writer = new PrintWriter(bw);
 	                for(int i = 0; i < pcsls; ){
@@ -305,7 +295,7 @@ public class Crawler implements Runnable {
 	    
 	    //save any leftovers
 	    try {
-	        fw = new FileWriter(storagePath + "/"+ "_url_doc_map.txt", true);
+	        fw = new FileWriter(settings.getStoragePath() + "/"+ "_url_doc_map.txt", true);
             bw = new BufferedWriter(fw);
             writer = new PrintWriter(bw);
             String s = null;
@@ -332,7 +322,7 @@ public class Crawler implements Runnable {
 	    //    writeMapTxt();
     	//}
 	    System.out.print("Finished Crawler: ");
-	    if(Objects.equals(LevelLimits.toString(), LevelLimitChecker)) {
+	    if(Objects.equals(levelLimits.toString(), LevelLimitChecker)) {
 	    	System.out.println("Avalible pages have run out.");
 	    }
 	    else {
@@ -344,7 +334,7 @@ public class Crawler implements Runnable {
     @Override
     public void run() {
     	//While we havn't either collecting the number of page, or have reached all the pages within our level limits
-        while((pagesCrawled.get() < numPagesToCrawl) && !(Objects.equals(LevelLimits.toString(), LevelLimitChecker))){
+        while((pagesCrawled.get() < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), LevelLimitChecker))){
             if(pagesLeft.tryAcquire()){
             	UrlPair BothUrl_hop = frontier.poll(); //get next URL in queue
                 
@@ -352,8 +342,8 @@ public class Crawler implements Runnable {
                 if(BothUrl_hop != null) {
                 	//frontier queue wasn't empty, so WaitCount resets
                 	WaitCount = 0;
-                	//LevelLimits array shows this thread isn't waiting 
-                	LevelLimits.compareAndSet(threadNumb, 1, 0);
+                	//levelLimits array shows this thread isn't waiting
+                	levelLimits.compareAndSet(threadNumb, 1, 0);
                 	
                 	
                 	String url = BothUrl_hop.url;
@@ -366,7 +356,7 @@ public class Crawler implements Runnable {
                     
                     //downloads the URL
                     //try {
-                        if(pagesCrawled.get() < numPagesToCrawl){
+                        if(pagesCrawled.get() < settings.getNumPagesToCrawl()){
                             if(downloadFile(url, BothUrl_hop.hop)){
                                 //keeps track of how many pages we have crawled
                                 int p = pagesCrawled.incrementAndGet();
@@ -381,9 +371,9 @@ public class Crawler implements Runnable {
                 }
             }
             if (WaitCount > 1000) {
-            	//if the current thread is waiting, set the int in the LevelLimits array to 1
+            	//if the current thread is waiting, set the int in the levelLimits array to 1
             	//this says that this thread isn't finding any pages in the queue
-            	LevelLimits.set(threadNumb, 1);
+            	levelLimits.set(threadNumb, 1);
             }
         }
         return;
