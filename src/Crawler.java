@@ -33,9 +33,9 @@ public class Crawler implements Runnable {
     
     //Each element hold value for each thread, when all are set to 1, there are no more valid urls within level limits
     private static AtomicIntegerArray levelLimits;
-    
+
     //queue holding all the URLs we will crawl and Levels of those URLs
-    private static ConcurrentLinkedQueue<UrlPair> frontier;
+    private static ConcurrentLinkedQueue<FrontierElement> frontier;
     
     //maps k<usedUrls> -> v<filename>
     //if the URL was not saved (i.e. has no filename) will hold null for v
@@ -168,8 +168,8 @@ public class Crawler implements Runnable {
                         //if the url is valid, and isn't more hops away from see than numLevels
                         if(urlValid && (hops < settings.getMaxDepth())){
                             try{
-                            	UrlPair NormURLPair = new UrlPair(normalizedURL, hops + 1);
-                                frontier.add(NormURLPair);
+                            	FrontierElement normFrontierElement = new FrontierElement(normalizedURL, hops + 1);
+                                frontier.add(normFrontierElement);
                             } catch(NullPointerException e){
                                 e.printStackTrace();
                             }
@@ -194,7 +194,7 @@ public class Crawler implements Runnable {
 	    //initializing the variables
 	    docCount = new AtomicLong(0);
 	    pagesCrawled = new AtomicInteger(0);
-	    frontier = new ConcurrentLinkedQueue<UrlPair>();
+	    frontier = new ConcurrentLinkedQueue<FrontierElement>();
 	    url_doc_map = new ConcurrentLinkedQueue<String>();
 	    usedUrls = new ConcurrentSkipListMap<String, String>();
 	    levelLimits = new AtomicIntegerArray(settings.getNumThreads());
@@ -235,7 +235,7 @@ public class Crawler implements Runnable {
             //enters each line into frontier queue
             while(seedScanner.hasNext()){
                 String URL = seedScanner.next();
-            	UrlPair BothURL_Hop = new UrlPair(URL, 0);
+            	FrontierElement BothURL_Hop = new FrontierElement(URL, 0);
                 frontier.add(BothURL_Hop);
                 usedUrls.put(URL, "");
             }
@@ -336,7 +336,7 @@ public class Crawler implements Runnable {
     	//While we havn't either collecting the number of page, or have reached all the pages within our level limits
         while((pagesCrawled.get() < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), LevelLimitChecker))){
             if(pagesLeft.tryAcquire()){
-            	UrlPair BothUrl_hop = frontier.poll(); //get next URL in queue
+            	FrontierElement BothUrl_hop = frontier.poll(); //get next URL in queue
                 
                 
                 if(BothUrl_hop != null) {
@@ -346,7 +346,7 @@ public class Crawler implements Runnable {
                 	levelLimits.compareAndSet(threadNumb, 1, 0);
                 	
                 	
-                	String url = BothUrl_hop.url;
+                	String url = BothUrl_hop.getUrl();
                 	
                     //if the URL doesn't have a protocol, attempts to fix it
                     if(!url.startsWith("http://") && !url.startsWith("https://")){
@@ -357,7 +357,7 @@ public class Crawler implements Runnable {
                     //downloads the URL
                     //try {
                         if(pagesCrawled.get() < settings.getNumPagesToCrawl()){
-                            if(downloadFile(url, BothUrl_hop.hop)){
+                            if(downloadFile(url, BothUrl_hop.getDepth())){
                                 //keeps track of how many pages we have crawled
                                 int p = pagesCrawled.incrementAndGet();
                                 if(p % 100 == 0)System.out.println("Pages Crawled: " + p);
