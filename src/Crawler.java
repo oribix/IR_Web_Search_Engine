@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Semaphore;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -25,7 +24,7 @@ public class Crawler implements Runnable {
     private String threadName;                      //name of the thread
     private int threadNumb;							//thread number, from 0 to (numThreads - 1)				
     private static AtomicInteger pagesCrawled;      //# of pages we have crawled
-    private static Semaphore pagesLeft;             //number of pages left to crawl
+    private static Semaphore downloadPermits;       //number of pages left to crawl
     private static AtomicLong docCount;             //# of created documents, used to generate document names
     private static Object validLock;                //lock used with url_doc_map
     private int WaitCount = 0;						//each thread has own WaitCount, goes up everytime frontier's empty
@@ -35,7 +34,7 @@ public class Crawler implements Runnable {
     private static AtomicIntegerArray levelLimits;
 
     //queue holding all the URLs we will crawl and Levels of those URLs
-    private static ConcurrentLinkedQueue<FrontierElement> frontier;
+    private static Frontier frontier;
     
     //maps k<usedUrls> -> v<filename>
     //if the URL was not saved (i.e. has no filename) will hold null for v
@@ -185,7 +184,17 @@ public class Crawler implements Runnable {
         }
         return success;
     }
-    
+
+    public static void createStorageFolder(Path storagePath){
+        //Creates a folder to store crawled pages
+        File dir = storagePath.toFile();
+        if(dir.mkdirs()) System.out.println("Storage folder successfully created");
+        else if(!dir.exists()){
+            System.out.println("Storage folder creation failed. Exiting...");
+            System.exit(-1);
+        }
+    }
+
 	public static void main(String[] args) {
 
         //get the settings from the args
@@ -194,39 +203,19 @@ public class Crawler implements Runnable {
 	    //initializing the variables
 	    docCount = new AtomicLong(0);
 	    pagesCrawled = new AtomicInteger(0);
-	    frontier = new ConcurrentLinkedQueue<FrontierElement>();
+	    frontier = new FrontierQueue();
 	    url_doc_map = new ConcurrentLinkedQueue<String>();
 	    usedUrls = new ConcurrentSkipListMap<String, String>();
 	    levelLimits = new AtomicIntegerArray(settings.getNumThreads());
 	    validLock = new Object();
-	    
-	    
-	    //prints error message if arguments are wrong then exits
-	    if(args.length < 3 || args.length > 4){
-	        System.out.println("Incorrect arguments passed. Arguments are of the form: \n"
-                    + "[Seed file path] [# Pages to Crawl] [# of Levels][optional: page storage path]");
-            return;
-	    }
-	    
+
+
+	    //Todo: Check to see what can be removed from here
 	    //sets the variables to the arguments
-        try {
-	        pagesLeft = new Semaphore(settings.getNumPagesToCrawl());
-	        
-	        //Creates a folder to store crawled pages
-	        File dir = settings.getStoragePath().toFile();
-            if(dir.mkdirs()) System.out.println("Storage folder successfully created");
-            else if(!dir.exists()){
-                System.out.println("Storage folder creation failed. Exiting...");
-                return;
-            }
-        }catch(NumberFormatException e){
-	        System.out.println("Are arg[1] and arg[2] numbers?");
-            e.printStackTrace();
-	    }catch(InvalidPathException e){
-	        System.out.println("Invalid path");
-	        e.printStackTrace();
-	    }
-	    
+        downloadPermits = new Semaphore(settings.getNumPagesToCrawl());
+
+        createStorageFolder(settings.getStoragePath());
+
 	    //initialize the frontier
         Scanner seedScanner = null;
         try {
@@ -335,7 +324,7 @@ public class Crawler implements Runnable {
     public void run() {
     	//While we havn't either collecting the number of page, or have reached all the pages within our level limits
         while((pagesCrawled.get() < settings.getNumPagesToCrawl()) && !(Objects.equals(levelLimits.toString(), LevelLimitChecker))){
-            if(pagesLeft.tryAcquire()){
+            if(downloadPermits.tryAcquire()){
             	FrontierElement BothUrl_hop = frontier.poll(); //get next URL in queue
                 
                 
@@ -362,12 +351,12 @@ public class Crawler implements Runnable {
                                 int p = pagesCrawled.incrementAndGet();
                                 if(p % 100 == 0)System.out.println("Pages Crawled: " + p);
                             }
-                            else pagesLeft.release(); //downloadFile failed. Release permit
+                            else downloadPermits.release(); //downloadFile failed. Release permit
                         }
                 }
                 else {
                 	WaitCount++;
-                	pagesLeft.release();//URL invalid. Release permit
+                	downloadPermits.release();//URL invalid. Release permit
                 }
             }
             if (WaitCount > 1000) {
