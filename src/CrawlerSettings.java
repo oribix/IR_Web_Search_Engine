@@ -56,8 +56,9 @@ class CrawlerSettings implements Settings {
      * @return the number of threads in the CPU architecture
      */
     private int getNumThreadsInCPU() {
-        //TODO: get number of threads in CPU
-        return 4;
+        int cores = Runtime.getRuntime().availableProcessors();
+        System.out.println("cores: " + cores);
+        return cores * 4;
     }
 
     @Override

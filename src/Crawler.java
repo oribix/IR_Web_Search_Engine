@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Semaphore;
 
+//Jsoup
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -31,7 +32,6 @@ public class Crawler implements Runnable {
     private static AtomicInteger pagesCrawled;      //# of pages we have crawled
     private static Semaphore downloadPermits;       //number of pages left to crawl
     private static AtomicLong docCount;             //# of created documents, used to generate document names
-    private static Object validLock;                //lock used with urlDocMap
     private static String LevelLimitChecker;		//Used to see if all threads are waiting
 
     private static ConcurrentLinkedQueue<String> urlDocMap;   //holds all url-document mappings
@@ -44,7 +44,7 @@ public class Crawler implements Runnable {
 //    private static ConcurrentSkipListMap<String, String> usedUrls;
     
     //Crawler constructor
-    Crawler(String name, int numb){
+    public Crawler(String name, int numb){
         threadName = name;
         threadNumb = numb;
     }
@@ -152,7 +152,7 @@ public class Crawler implements Runnable {
     private boolean downloadFile(FrontierElement frontierElement){
         String url = frontierElement.getUrl();
         int depth = frontierElement.getDepth();
-        
+
         //request page with HTTP get
         Document doc = getDoc(frontierElement.getUrl());
         if(doc == null) return false;
@@ -201,7 +201,7 @@ public class Crawler implements Runnable {
     }
 
     //Creates a folder to store crawled pages
-    public static void createStorageFolder(Path storagePath){
+    private static void createStorageFolder(Path storagePath){
         File dir = storagePath.toFile();
         if(dir.mkdirs()) System.out.println("Storage folder successfully created");
         else if(!dir.exists()){
@@ -222,9 +222,8 @@ public class Crawler implements Runnable {
 	    urlDocMap = new ConcurrentLinkedQueue<>();
 //	    usedUrls = new ConcurrentSkipListMap<String, String>();
 	    levelLimits = new AtomicIntegerArray(settings.getNumThreads());
-	    validLock = new Object();
 
-	    //sets the variables to the arguments
+        //sets the variables to the arguments
         downloadPermits = new Semaphore(settings.getNumPagesToCrawl());
 
         createStorageFolder(settings.getStoragePath());
@@ -247,7 +246,7 @@ public class Crawler implements Runnable {
 	    //saves mapping as we crawl pages
 	    //we do not go past this point until we have crawled all the pages
 	    FileWriter fw;
-	    BufferedWriter bw = null;
+	    BufferedWriter bw;
 	    PrintWriter writer = null;
 	    int pc = 0;        //pages crawled
 	    int pcols = 0;     //pages crawled on last save
