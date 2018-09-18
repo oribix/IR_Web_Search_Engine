@@ -58,6 +58,14 @@ class CrawlerSettings implements Settings {
     private int getNumThreadsInCPU() {
         int cores = Runtime.getRuntime().availableProcessors();
         System.out.println("cores: " + cores);
+
+        /* 4 is an arbitrary number.
+           Later Down the line I will create a thread pool which will take care of links as needed.
+           This thread pool will grow as needed, but likely will not shrink since we want to keep the maximum number of
+           threads available.
+           If the crawler uses 100 threads at some point in time, it is likely to us 100 threads in the future, so we
+           keep those threads alive.
+         */
         return cores * 4;
     }
 
@@ -66,7 +74,7 @@ class CrawlerSettings implements Settings {
         return seedPath;
     }
 
-    void setSeedPath(Path seedPath) {
+    private void setSeedPath(Path seedPath) {
         this.seedPath = seedPath;
     }
 
@@ -75,7 +83,7 @@ class CrawlerSettings implements Settings {
         return storagePath;
     }
 
-    void setStoragePath(Path storagePath) {
+    private void setStoragePath(Path storagePath) {
         this.storagePath = storagePath;
     }
 
@@ -84,7 +92,7 @@ class CrawlerSettings implements Settings {
         return numPagesToCrawl;
     }
 
-    void setNumPagesToCrawl(int numPagesToCrawl) {
+    private void setNumPagesToCrawl(int numPagesToCrawl) {
         this.numPagesToCrawl = numPagesToCrawl;
     }
 
@@ -93,7 +101,7 @@ class CrawlerSettings implements Settings {
         return maxDepth;
     }
 
-    void setMaxDepth(int maxDepth) {
+    private void setMaxDepth(int maxDepth) {
         this.maxDepth = maxDepth;
     }
 

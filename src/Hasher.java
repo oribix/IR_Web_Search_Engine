@@ -61,7 +61,7 @@ public class Hasher {
     public static void main(String[] args){
         String filepath = "C://Users/Marco Morelos/Desktop/Brownie AF.txt";
         File file = new File(filepath);
-        Hasher hasher = new Hasher("password1");
+        Hasher hasher = new Hasher(file);
         System.out.println("Hash: " + hasher.getEncodedHash());
     }
 }
